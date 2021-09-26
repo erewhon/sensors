@@ -13,7 +13,7 @@ After=network.target auditd.service
 
 [Service]
 EnvironmentFile=/home/pi/sensors.env
-ExecStart=/home/pi/Projects/sensors/src/full.py
+ExecStart=/usr/local/opt/python-3.9.7/bin/python3.9 /home/pi/Projects/sensors/src/full.py
 StandardOutput=journal
 StandardError=journal
 Type=simple
@@ -27,4 +27,4 @@ RestartSec=1
 
 [Install]
 WantedBy=multi-user.target
-Alias=co2.service
+Alias=sensors.service

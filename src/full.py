@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.9
 #
 # Kitchen sink sensor reader and publisher.  Reads config.py file
 # for list of sensors and outputs
