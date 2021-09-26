@@ -1,0 +1,30 @@
+#
+# sudo cp -vip sensors.service /etc/systemd/system/
+# systemctl start sensors.service
+# systemctl enable sensors.service
+# systemctl status sensors.service
+# journalctl --unit=sensors --follow
+#
+# sensors.env contains Adafruit credentials, location info
+#
+[Unit]
+Description=Sensors
+After=network.target auditd.service
+
+[Service]
+EnvironmentFile=/home/pi/sensors.env
+ExecStart=/home/pi/Projects/sensors/src/full.py
+StandardOutput=journal
+StandardError=journal
+Type=simple
+User=pi
+#
+# Always restart, once a second, and never stop trying
+#
+Restart=always
+RestartSec=1
+# StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target
+Alias=co2.service
