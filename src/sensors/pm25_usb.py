@@ -23,6 +23,13 @@ class PM25USB:
     # byte, data = 0, ""
 
     def __init__(self, dev='/dev/tty.usbserial-330'):
+        logging.basicConfig(
+            format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+            level=logging.INFO,
+            datefmt='%Y-%m-%d %H:%M:%S')
+
+        logging.info("""PM25USB Opening serial port""")
+
         self.ser = serial.Serial()
         self.ser.port = dev # "/dev/ttyUSB0"
         self.ser.baudrate = 9600
@@ -30,10 +37,14 @@ class PM25USB:
         self.ser.open()
         self.ser.flushInput()
 
+        logging.info("""PM25USB initializing""")
+
         self.cmd_set_sleep(0)
         self.cmd_firmware_ver()
         self.cmd_set_working_period(PERIOD_5MIN)
         self.cmd_set_mode(MODE_QUERY);
+
+        logging.info("""PM25USB done initializing""")
 
     def dump(self, d, prefix=''):
         print(prefix + ' '.join(x.encode('hex') for x in d))
