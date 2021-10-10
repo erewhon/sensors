@@ -1,9 +1,12 @@
 #!/usr/bin/env python3.9
+# -*- coding: utf-8 -*-
 
 # "DATASHEET": http://cl.ly/ekot
-# https://gist.github.com/kadamski/92653913a53baf9dd1a8
+# Original: https://gist.github.com/kadamski/92653913a53baf9dd1a8
+# Updating for Python3: https://github.com/tyeth/john_air/blob/main/aqi_py3_win.py#L87
 
 import serial, struct, sys, time, json, subprocess
+import logging
 
 DEBUG = 0
 CMD_MODE = 2
@@ -46,38 +49,59 @@ class PM25USB:
 
         logging.info("""PM25USB done initializing""")
 
+    def ov(v):
+        try:
+            return ord(v)
+        except:
+            return ord(str(v))
+
     def dump(self, d, prefix=''):
-        print(prefix + ' '.join(x.encode('hex') for x in d))
+        # print(prefix + ' '.join(x.encode('hex') for x in d))
+        print(prefix + f'({len(d)})' + ' '.join(str(x) for x in d))
 
     def construct_command(self, cmd, data=[]):
         assert len(data) <= 12
+        # data += [0,]*(12-len(data))
+        # checksum = (sum(data)+cmd-2)%256
+        # ret = "\xaa\xb4" + chr(cmd)
+        # ret += ''.join(chr(x) for x in data)
+        # ret += "\xff\xff" + chr(checksum) + "\xab"
+
         data += [0,]*(12-len(data))
         checksum = (sum(data)+cmd-2)%256
-        ret = "\xaa\xb4" + chr(cmd)
-        ret += ''.join(chr(x) for x in data)
-        ret += "\xff\xff" + chr(checksum) + "\xab"
+        ret = b"\xaa\xb4" + chr(cmd).encode()
+        ret = ret + b''.join(chr(x).encode() for x in data)
+        ret = ret + b"\xff\xff" + chr(checksum).encode() + b"\xab"
 
         if DEBUG:
-            self.dump(ret, '> ')
-        return ret.encode()
+            self.dump(ret, 'construct command> ')
+
+        # return ret.encode()
+        return ret
 
     def process_data(self, d):
         r = struct.unpack('<HHxxBB', d[2:])
         pm25 = r[0]/10.0
         pm10 = r[1]/10.0
         checksum = sum(v for v in d[2:8])%256
+
+        if DEBUG:
+            print("PM 2.5: {} μg/m^3  PM 10: {} μg/m^3 CRC={}".format(pm25, pm10, "OK" if (checksum==r[2] and r[3]==0xab) else "NOK"))
+
         return [pm25, pm10]
-        #print("PM 2.5: {} μg/m^3  PM 10: {} μg/m^3 CRC={}".format(pm25, pm10, "OK" if (checksum==r[2] and r[3]==0xab) else "NOK"))
 
     def process_version(self, d):
         r = struct.unpack('<BBBHBB', d[3:])
         checksum = sum(v for v in d[2:8])%256
-        print("Y: {}, M: {}, D: {}, ID: {}, CRC={}".format(r[0], r[1], r[2], hex(r[3]), "OK" if (checksum==r[4] and r[5]==0xab) else "NOK"))
+
+        if DEBUG:
+            print("Y: {}, M: {}, D: {}, ID: {}, CRC={}".format(r[0], r[1], r[2], hex(r[3]), "OK" if (checksum==r[4] and r[5]==0xab) else "NOK"))
 
     def read_response(self):
         byte = 0
         while byte != b'\xaa':
             byte = self.ser.read(size=1)
+            # print(byte)
 
         d = self.ser.read(size=9)
 
@@ -94,7 +118,7 @@ class PM25USB:
         self.ser.write(self.construct_command(CMD_QUERY_DATA))
         d = self.read_response()
         values = []
-        if d[1] == ord(b'\xc0'):
+        if d[1] == 192: # ord(b'\xc0'):
             values = self.process_data(d)
         return values
 
@@ -119,21 +143,32 @@ class PM25USB:
         self.read_response()
 
     def read(self):
+        # We read 15 times, returning the final value.
         # todo : don't read if it's been less than 5 minutes?
         self.cmd_set_sleep(0)
 
         for t in range(15):
             values = self.cmd_query_data()
             if values is not None and len(values) == 2:
-                print(values)
+                # Debugging intermediate values: print(values)
                 time.sleep(2)
 
         self.cmd_set_sleep(5)
 
         return {
-            'pm25': values[0],
-            'pm100': values[1]
+            'pm25 standard': values[0],
+            'pm100 standard': values[1]
         }
 
 if __name__ == '__main__':
-    device = PM25USB('/dev/tty.usbserial-330')
+    device = PM25USB('/dev/tty.usbserial-110')
+
+    while True:
+        logging.info("Starting read from sensor")
+
+        reading = device.read()
+
+        logging.info(f'Data value: {reading}')
+
+        logging.info("Sleeping...")
+        time.sleep(30)
