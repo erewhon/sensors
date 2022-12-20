@@ -30,3 +30,5 @@ standard readings where applicable:
     temperature (in Fake units)
     humidity (relative by default)
     
+todo:
+  pass in parameter to "construction" (optionally) to specify other measurements to capture, and perhaps the target reading
